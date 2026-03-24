@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>Beležnica</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F5F0E8;
+    --card: #FDFAF4;
+    --sand: #E8DFC8;
+    --border: #D4C9B0;
+    --ink: #1A1410;
+    --rust: #C4622D;
+    --muted: #8A7B6A;
+    --white: #FAF8F4;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    font-family: -apple-system, 'Georgia', serif;
+    color: var(--ink);
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── APP SHELL ── */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: -webkit-fill-available;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px 12px;
+    padding-top: max(14px, env(safe-area-inset-top));
+    background: var(--card);
+    border-bottom: 1.5px solid var(--border);
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .logo-icon { color: var(--rust); font-size: 20px; }
+
+  .header-right { display: flex; align-items: center; gap: 10px; }
+
+  .lang-btn {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    font-family: -apple-system, monospace;
+  }
+
+  .sources-btn {
+    background: var(--rust);
+    border: none;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .source-count {
+    background: rgba(255,255,255,0.3);
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    background: var(--card);
+    border-bottom: 1.5px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 11px 4px;
+    background: transparent;
+    border: none;
+    border-bottom: 2.5px solid transparent;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+    letter-spacing: 0.01em;
+  }
+  .tab.active {
+    color: var(--rust);
+    border-bottom-color: var(--rust);
+    font-weight: 700;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* ── SOURCES DRAWER ── */
+  .drawer-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 50;
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+  .drawer-overlay.open { display: block; opacity: 1; }
+
+  .drawer {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--card);
+    border-radius: 20px 20px 0 0;
+    z-index: 51;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: var(--safe-bottom);
+  }
+  .drawer.open { transform: translateY(0); }
+
+  .drawer-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 12px auto 0;
+    flex-shrink: 0;
+  }
+
+  .drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    flex-shrink: 0;
+  }
+
+  .drawer-title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .drawer-close {
+    background: var(--sand);
+    border: none;
+    border-radius: 50%;
+    width: 28px; height: 28px;
+    font-size: 14px;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .drawer-body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 0 20px 20px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Add buttons */
+  .add-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .add-tile {
+    background: var(--sand);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .add-tile:active { background: var(--border); }
+  .add-tile-icon { font-size: 22px; }
+  .add-tile-label { font-size: 12px; font-weight: 600; color: var(--ink); }
+  .add-tile-sub { font-size: 10px; color: var(--muted); }
+
+  /* Input panel */
+  .input-panel {
+    display: none;
+    background: var(--sand);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+    gap: 10px;
+    flex-direction: column;
+  }
+  .input-panel.visible { display: flex; }
+
+  .inp {
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 15px;
+    background: var(--white);
+    color: var(--ink);
+    font-family: inherit;
+    outline: none;
+    width: 100%;
+    -webkit-appearance: none;
+  }
+  .inp:focus { border-color: var(--rust); }
+
+  textarea.inp {
+    resize: none;
+    min-height: 90px;
+  }
+
+  .inp-row { display: flex; gap: 8px; }
+
+  .btn-confirm {
+    flex: 1;
+    background: var(--rust);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 11px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-cancel {
+    background: transparent;
+    color: var(--muted);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .err-msg { color: #c0392b; font-size: 12px; }
+
+  /* Source list */
+  .sources-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .source-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  .source-emoji { font-size: 18px; flex-shrink: 0; }
+  .source-info { flex: 1; min-width: 0; }
+  .source-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .source-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .source-remove {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    flex-shrink: 0;
+  }
+
+  .empty-sources {
+    text-align: center;
+    padding: 30px 0 10px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .empty-sources div:first-child { font-size: 32px; margin-bottom: 8px; }
+
+  /* ── CHAT SCREEN ── */
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 16px 8px;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: 40px 20px;
+    text-align: center;
+    gap: 10px;
+  }
+  .welcome-icon { font-size: 40px; color: var(--rust); opacity: 0.4; }
+  .welcome-text { font-size: 15px; color: var(--muted); font-style: italic; line-height: 1.6; }
+
+  .msg {
+    display: flex;
+    gap: 8px;
+    max-width: 88%;
+  }
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .msg.assistant { align-self: flex-start; }
+
+  .msg-role {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-top: 4px;
+    flex-shrink: 0;
+    width: 20px;
+    text-align: center;
+  }
+
+  .msg-bubble {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 10px 13px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ink);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .msg.user .msg-bubble {
+    background: var(--rust);
+    color: #fff;
+    border-color: var(--rust);
+  }
+
+  .typing {
+    display: flex;
+    gap: 5px;
+    padding: 12px 14px;
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    align-items: center;
+  }
+  .typing span {
+    width: 6px; height: 6px;
+    background: var(--rust);
+    border-radius: 50%;
+    display: inline-block;
+    animation: bounce 1.2s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-5px); }
+  }
+
+  .chat-input-bar {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    padding-bottom: max(10px, var(--safe-bottom));
+    background: var(--card);
+    border-top: 1.5px solid var(--border);
+    flex-shrink: 0;
+    align-items: flex-end;
+  }
+
+  .chat-inp {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 10px 16px;
+    font-size: 15px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: inherit;
+    outline: none;
+    resize: none;
+    max-height: 120px;
+    line-height: 1.4;
+    -webkit-appearance: none;
+  }
+  .chat-inp:focus { border-color: var(--rust); }
+
+  .send-btn {
+    background: var(--rust);
+    border: none;
+    border-radius: 50%;
+    width: 40px; height: 40px;
+    font-size: 18px;
+    color: #fff;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+  }
+  .send-btn:disabled { opacity: 0.4; }
+
+  /* ── SUMMARY SCREEN ── */
+  .action-screen {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 16px;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .action-btn {
+    background: var(--rust);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    align-self: flex-start;
+    transition: opacity 0.15s;
+  }
+  .action-btn:disabled { opacity: 0.5; }
+
+  .result-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 16px;
+  }
+
+  .result-line { font-size: 15px; line-height: 1.75; color: var(--ink); margin-bottom: 6px; }
+  .result-h2 { font-size: 18px; font-weight: 700; color: var(--ink); margin: 14px 0 6px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+  .result-h3 { font-size: 16px; font-weight: 700; color: var(--rust); margin: 10px 0 4px; }
+  .result-bullet { font-size: 15px; line-height: 1.7; padding-left: 14px; margin-bottom: 3px; color: var(--ink); }
+
+  /* ── Q&A ── */
+  .qa-item {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  .qa-q {
+    display: flex;
+    gap: 10px;
+    padding: 13px 14px;
+    background: var(--sand);
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    align-items: flex-start;
+  }
+
+  .qa-a {
+    display: flex;
+    gap: 10px;
+    padding: 13px 14px;
+    font-size: 14px;
+    color: var(--ink);
+    line-height: 1.7;
+    align-items: flex-start;
+  }
+
+  .qa-label {
+    background: var(--rust);
+    color: #fff;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .qa-label-a {
+    background: var(--ink);
+    color: #fff;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+
+  /* loading spinner */
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <span class="logo-icon">◈</span>
+      <span id="appName">Beležnica</span>
+    </div>
+    <div class="header-right">
+      <button class="lang-btn" onclick="toggleLang()">EN</button>
+      <button class="sources-btn" onclick="openDrawer()">
+        <span id="sourcesLabel">Izvori</span>
+        <span class="source-count" id="sourceCount">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('chat')" id="tab-chat">💬 Chat</button>
+    <button class="tab" onclick="switchTab('summary')" id="tab-summary">📋 Rezime</button>
+    <button class="tab" onclick="switchTab('qa')" id="tab-qa">❓ Pitanja</button>
+  </div>
+
+  <!-- CHAT SCREEN -->
+  <div class="screen active" id="screen-chat">
+    <div class="chat-messages" id="chatMessages">
+      <div class="welcome" id="welcomeMsg">
+        <div class="welcome-icon">◈</div>
+        <div class="welcome-text" id="welcomeText">Dodajte izvore i počnite razgovor sa njima.</div>
+      </div>
+    </div>
+    <div class="chat-input-bar">
+      <textarea class="chat-inp" id="chatInput" rows="1"
+        placeholder="Pitajte nešto..."
+        oninput="autoResize(this)"
+        onkeydown="chatKeyDown(event)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>→</button>
+    </div>
+  </div>
+
+  <!-- SUMMARY SCREEN -->
+  <div class="screen" id="screen-summary">
+    <div class="action-screen">
+      <button class="action-btn" id="summaryBtn" onclick="generateSummary()">
+        <span>📋</span> <span id="summaryBtnLabel">Generiši rezime</span>
+      </button>
+      <div id="summaryResult"></div>
+    </div>
+  </div>
+
+  <!-- Q&A SCREEN -->
+  <div class="screen" id="screen-qa">
+    <div class="action-screen">
+      <button class="action-btn" id="qaBtn" onclick="generateQA()">
+        <span>❓</span> <span id="qaBtnLabel">Generiši pitanja</span>
+      </button>
+      <div id="qaResult"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SOURCES DRAWER -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-header">
+    <span class="drawer-title" id="drawerTitle">Izvori</span>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+
+    <!-- Add grid -->
+    <div class="add-grid">
+      <button class="add-tile" onclick="document.getElementById('fileInput').click()">
+        <span class="add-tile-icon">📁</span>
+        <span class="add-tile-label" id="uploadLabel">Otpremi fajl</span>
+        <span class="add-tile-sub">PDF, DOCX, TXT</span>
+      </button>
+      <button class="add-tile" onclick="showPanel('url')">
+        <span class="add-tile-icon">🔗</span>
+        <span class="add-tile-label" id="urlLabel">URL adresa</span>
+        <span class="add-tile-sub">Web stranica</span>
+      </button>
+      <button class="add-tile" onclick="showPanel('text')" style="grid-column: span 2;">
+        <span class="add-tile-icon">✏️</span>
+        <span class="add-tile-label" id="textLabel">Unesi tekst</span>
+        <span class="add-tile-sub">Zalepi direktno</span>
+      </button>
+    </div>
+
+    <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md" multiple
+      style="display:none" onchange="handleFiles(event)"/>
+
+    <!-- URL panel -->
+    <div class="input-panel" id="urlPanel">
+      <input class="inp" id="urlInp" type="url" placeholder="https://..."
+        onkeydown="if(event.key==='Enter') addUrl()"/>
+      <div class="err-msg" id="urlErr"></div>
+      <div class="inp-row">
+        <button class="btn-confirm" id="urlConfirm" onclick="addUrl()">Dodaj</button>
+        <button class="btn-cancel" onclick="hidePanel()">Otkaži</button>
+      </div>
+    </div>
+
+    <!-- Text panel -->
+    <div class="input-panel" id="textPanel">
+      <input class="inp" id="textName" placeholder="Naziv izvora..."/>
+      <textarea class="inp" id="textInp" rows="5" placeholder="Zalepi tekst ovde..."></textarea>
+      <div class="inp-row">
+        <button class="btn-confirm" onclick="addText()">Dodaj</button>
+        <button class="btn-cancel" onclick="hidePanel()">Otkaži</button>
+      </div>
+    </div>
+
+    <!-- Source list -->
+    <div class="sources-section-title" id="sourcesListTitle">Dodati izvori</div>
+    <div id="sourcesList">
+      <div class="empty-sources" id="emptyMsg">
+        <div>◫</div>
+        <div id="emptyText">Nema izvora. Dodajte fajl, URL ili tekst.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let lang = 'sr';
+let sources = [];
+let messages = [];
+let loading = false;
+
+const T = {
+  sr: {
+    app: 'Beležnica', sources: 'Izvori', upload: 'Otpremi fajl',
+    urlLbl: 'URL adresa', textLbl: 'Unesi tekst', add: 'Dodaj',
+    cancel: 'Otkaži', drawerTitle: 'Upravljaj izvorima',
+    sourcesListTitle: 'Dodati izvori', empty: 'Nema izvora. Dodajte fajl, URL ili tekst.',
+    welcome: 'Dodajte izvore i počnite razgovor sa njima.',
+    chatPh: 'Pitajte nešto...', summaryBtn: 'Generiši rezime',
+    qaBtn: 'Generiši pitanja', generating: 'Generišem...',
+    noSources: 'Molimo dodajte bar jedan izvor!',
+    chars: 'znakova', urlErr: 'Nije moguće učitati URL. Proverite adresu.',
+    loading: 'Učitavam...',
+  },
+  en: {
+    app: 'Notebook', sources: 'Sources', upload: 'Upload file',
+    urlLbl: 'Paste URL', textLbl: 'Paste text', add: 'Add',
+    cancel: 'Cancel', drawerTitle: 'Manage sources',
+    sourcesListTitle: 'Added sources', empty: 'No sources yet. Add a file, URL, or text.',
+    welcome: 'Add sources and start chatting with them.',
+    chatPh: 'Ask anything...', summaryBtn: 'Generate summary',
+    qaBtn: 'Generate questions', generating: 'Generating...',
+    noSources: 'Please add at least one source!',
+    chars: 'chars', urlErr: 'Could not load URL. Please check the address.',
+    loading: 'Loading...',
+  }
+};
+
+function t(k) { return T[lang][k]; }
+
+// ── Lang ──────────────────────────────────────────────────────────────────────
+function toggleLang() {
+  lang = lang === 'sr' ? 'en' : 'sr';
+  document.querySelector('.lang-btn').textContent = lang === 'sr' ? 'EN' : 'SR';
+  applyLang();
+}
+
+function applyLang() {
+  document.getElementById('appName').textContent = t('app');
+  document.getElementById('sourcesLabel').textContent = t('sources');
+  document.getElementById('uploadLabel').textContent = t('upload');
+  document.getElementById('urlLabel').textContent = t('urlLbl');
+  document.getElementById('textLabel').textContent = t('textLbl');
+  document.getElementById('drawerTitle').textContent = t('drawerTitle');
+  document.getElementById('sourcesListTitle').textContent = t('sourcesListTitle');
+  document.getElementById('emptyText').textContent = t('empty');
+  document.getElementById('welcomeText').textContent = t('welcome');
+  document.getElementById('chatInput').placeholder = t('chatPh');
+  document.getElementById('summaryBtnLabel').textContent = t('summaryBtn');
+  document.getElementById('qaBtnLabel').textContent = t('qaBtn');
+
+  const tabs = document.querySelectorAll('.tab');
+  tabs[1].textContent = '📋 ' + (lang === 'sr' ? 'Rezime' : 'Summary');
+  tabs[2].textContent = '❓ ' + (lang === 'sr' ? 'Pitanja' : 'Questions');
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── Drawer ────────────────────────────────────────────────────────────────────
+function openDrawer() {
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawerOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+  hidePanel();
+}
+
+// ── Input panels ──────────────────────────────────────────────────────────────
+function showPanel(type) {
+  hidePanel();
+  document.getElementById(type + 'Panel').classList.add('visible');
+  setTimeout(() => {
+    const inp = document.getElementById(type === 'url' ? 'urlInp' : 'textName');
+    inp && inp.focus();
+  }, 100);
+}
+
+function hidePanel() {
+  document.querySelectorAll('.input-panel').forEach(p => p.classList.remove('visible'));
+  document.getElementById('urlInp').value = '';
+  document.getElementById('urlErr').textContent = '';
+  document.getElementById('textInp').value = '';
+  document.getElementById('textName').value = '';
+}
+
+// ── Sources ───────────────────────────────────────────────────────────────────
+function addSource(name, content, type) {
+  sources.push({ id: Date.now(), name, content, type });
+  renderSources();
+  updateSendBtn();
+}
+
+function removeSource(id) {
+  sources = sources.filter(s => s.id !== id);
+  renderSources();
+  updateSendBtn();
+}
+
+function renderSources() {
+  document.getElementById('sourceCount').textContent = sources.length;
+  const list = document.getElementById('sourcesList');
+  const empty = document.getElementById('emptyMsg');
+
+  if (sources.length === 0) {
+    empty.style.display = 'block';
+    list.innerHTML = '';
+    list.appendChild(empty);
+    return;
+  }
+
+  empty.style.display = 'none';
+  const items = sources.map(s => `
+    <div class="source-item">
+      <span class="source-emoji">${s.type === 'pdf' ? '📕' : s.type === 'docx' ? '📄' : s.type === 'url' ? '🔗' : '📝'}</span>
+      <div class="source-info">
+        <div class="source-name">${s.name}</div>
+        <div class="source-meta">${s.content.length.toLocaleString()} ${t('chars')}</div>
+      </div>
+      <button class="source-remove" onclick="removeSource(${s.id})">✕</button>
+    </div>
+  `).join('');
+  list.innerHTML = items;
+}
+
+// ── File handling ─────────────────────────────────────────────────────────────
+function handleFiles(e) {
+  Array.from(e.target.files).forEach(async f => {
+    const content = await extractText(f);
+    const type = f.name.toLowerCase().endsWith('.pdf') ? 'pdf'
+      : f.name.toLowerCase().endsWith('.docx') ? 'docx' : 'txt';
+    addSource(f.name, content, type);
+  });
+  e.target.value = '';
+}
+
+async function extractText(file) {
+  return new Promise(resolve => {
+    const name = file.name.toLowerCase();
+    const reader = new FileReader();
+    if (name.endsWith('.txt') || name.endsWith('.md')) {
+      reader.onload = e => resolve(e.target.result);
+      reader.readAsText(file);
+    } else if (name.endsWith('.pdf')) {
+      reader.onload = e => {
+        try {
+          const dec = new TextDecoder('utf-8', { fatal: false });
+          const raw = dec.decode(new Uint8Array(e.target.result));
+          const matches = raw.match(/BT[\s\S]*?ET/g) || [];
+          let text = '';
+          for (const b of matches) {
+            const strs = b.match(/\(((?:[^()\\]|\\.)*)\)\s*Tj/g) || [];
+            for (const s of strs) {
+              const m = s.match(/\(((?:[^()\\]|\\.)*)\)/);
+              if (m) text += m[1].replace(/\\n/g,'\n') + ' ';
+            }
+          }
+          resolve(text.trim() || '[PDF: tekstualna ekstrakcija ograničena u browser-u]');
+        } catch { resolve('[PDF: greška pri ekstrakciji]'); }
+      };
+      reader.readAsArrayBuffer(file);
+    } else if (name.endsWith('.docx')) {
+      reader.onload = e => {
+        try {
+          const dec = new TextDecoder('utf-8', { fatal: false });
+          const raw = dec.decode(new Uint8Array(e.target.result));
+          const m = raw.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g) || [];
+          const text = m.map(t => t.replace(/<[^>]+>/g,'')).join(' ');
+          resolve(text || '[DOCX: prazan dokument]');
+        } catch { resolve('[DOCX: greška pri ekstrakciji]'); }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      resolve('[Nepodržan format]');
+    }
+  });
+}
+
+// ── URL ───────────────────────────────────────────────────────────────────────
+async function addUrl() {
+  const val = document.getElementById('urlInp').value.trim();
+  if (!val) return;
+  const btn = document.getElementById('urlConfirm');
+  btn.textContent = t('loading');
+  btn.disabled = true;
+  document.getElementById('urlErr').textContent = '';
+  try {
+    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(val)}`);
+    const data = await res.json();
+    if (!data.contents) throw new Error('empty');
+    const text = data.contents
+      .replace(/<script[\s\S]*?<\/script>/gi,'')
+      .replace(/<style[\s\S]*?<\/style>/gi,'')
+      .replace(/<[^>]+>/g,' ')
+      .replace(/\s+/g,' ').trim().slice(0, 15000);
+    const name = val.replace(/^https?:\/\//,'').slice(0,50);
+    addSource(name, text, 'url');
+    hidePanel();
+  } catch {
+    document.getElementById('urlErr').textContent = t('urlErr');
+  }
+  btn.textContent = t('add');
+  btn.disabled = false;
+}
+
+// ── Text ──────────────────────────────────────────────────────────────────────
+function addText() {
+  const name = document.getElementById('textName').value.trim() || 'Tekst';
+  const content = document.getElementById('textInp').value.trim();
+  if (!content) return;
+  addSource(name, content, 'txt');
+  hidePanel();
+}
+
+// ── Claude API ────────────────────────────────────────────────────────────────
+function buildSystem() {
+  const content = sources.map((s,i) => `[Izvor ${i+1}: ${s.name}]\n${s.content}`).join('\n\n---\n\n');
+  return lang === 'sr'
+    ? `Ti si asistent koji odgovara ISKLJUČIVO na osnovu sledećih dokumenata. Odgovaraj na srpskom jeziku.\n\n${content}`
+    : `You are an assistant answering ONLY based on these documents. Respond in English.\n\n${content}`;
+}
+
+async function callClaude(msgs, system) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system,
+      messages: msgs
+    })
+  });
+  const data = await res.json();
+  return data.content?.[0]?.text || '';
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+function updateSendBtn() {
+  const inp = document.getElementById('chatInput');
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = loading || !inp.value.trim() || sources.length === 0;
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  updateSendBtn();
+}
+
+function chatKeyDown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+async function sendMessage() {
+  const inp = document.getElementById('chatInput');
+  const text = inp.value.trim();
+  if (!text || loading || sources.length === 0) return;
+
+  messages.push({ role: 'user', content: text });
+  inp.value = '';
+  inp.style.height = 'auto';
+  loading = true;
+  updateSendBtn();
+  renderMessages(true);
+
+  try {
+    const reply = await callClaude(messages, buildSystem());
+    messages.push({ role: 'assistant', content: reply });
+  } catch {
+    messages.push({ role: 'assistant', content: '⚠️ Greška pri konekciji.' });
+  }
+
+  loading = false;
+  updateSendBtn();
+  renderMessages(false);
+}
+
+function renderMessages(withTyping) {
+  const el = document.getElementById('chatMessages');
+  const welcome = document.getElementById('welcomeMsg');
+
+  if (messages.length === 0) {
+    welcome.style.display = 'flex';
+    el.innerHTML = '';
+    el.appendChild(welcome);
+    return;
+  }
+
+  welcome.style.display = 'none';
+  let html = messages.map(m => `
+    <div class="msg ${m.role}">
+      <div class="msg-role">${m.role === 'user' ? 'Ti' : '◈'}</div>
+      <div class="msg-bubble">${m.content.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+    </div>
+  `).join('');
+
+  if (withTyping) {
+    html += `
+      <div class="msg assistant" id="typingMsg">
+        <div class="msg-role">◈</div>
+        <div class="typing"><span></span><span></span><span></span></div>
+      </div>`;
+  }
+
+  el.innerHTML = html;
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Summary ───────────────────────────────────────────────────────────────────
+async function generateSummary() {
+  if (sources.length === 0) { alert(t('noSources')); return; }
+  const btn = document.getElementById('summaryBtn');
+  btn.disabled = true;
+  btn.querySelector('span:last-child').textContent = t('generating');
+  document.getElementById('summaryResult').innerHTML = '';
+
+  const prompt = lang === 'sr'
+    ? 'Napravi detaljan rezime svih dokumenata koristeći naslove i bullet points.'
+    : 'Create a detailed summary of all documents using headings and bullet points.';
+
+  try {
+    const reply = await callClaude([{ role: 'user', content: prompt }], buildSystem());
+    document.getElementById('summaryResult').innerHTML = renderMarkdown(reply);
+  } catch {
+    document.getElementById('summaryResult').innerHTML = '<p style="color:#c0392b">Greška.</p>';
+  }
+
+  btn.disabled = false;
+  btn.querySelector('span:last-child').textContent = t('summaryBtn');
+}
+
+// ── Q&A ───────────────────────────────────────────────────────────────────────
+async function generateQA() {
+  if (sources.length === 0) { alert(t('noSources')); return; }
+  const btn = document.getElementById('qaBtn');
+  btn.disabled = true;
+  btn.querySelector('span:last-child').textContent = t('generating');
+  document.getElementById('qaResult').innerHTML = '';
+
+  const prompt = lang === 'sr'
+    ? 'Generiši 7 ključnih pitanja i odgovora. Format:\nQ: pitanje\nA: odgovor\n\nQ: ...'
+    : 'Generate 7 key questions and answers.\nQ: question\nA: answer\n\nQ: ...';
+
+  try {
+    const reply = await callClaude([{ role: 'user', content: prompt }], buildSystem());
+    const pairs = parseQA(reply);
+    const html = pairs.map(p => `
+      <div class="qa-item">
+        <div class="qa-q"><span class="qa-label">Q</span>${escHtml(p.q)}</div>
+        <div class="qa-a"><span class="qa-label-a">A</span>${escHtml(p.a)}</div>
+      </div>
+    `).join('');
+    document.getElementById('qaResult').innerHTML = html || `<div class="result-card"><p>${reply}</p></div>`;
+  } catch {
+    document.getElementById('qaResult').innerHTML = '<p style="color:#c0392b">Greška.</p>';
+  }
+
+  btn.disabled = false;
+  btn.querySelector('span:last-child').textContent = t('qaBtn');
+}
+
+function parseQA(text) {
+  const pairs = [];
+  const blocks = text.split(/\n\s*Q:/i).filter(Boolean);
+  for (const b of blocks) {
+    const parts = b.split(/\n\s*A:/i);
+    if (parts.length >= 2) {
+      pairs.push({ q: parts[0].replace(/^:/,'').trim(), a: parts[1].trim() });
+    }
+  }
+  return pairs;
+}
+
+function escHtml(s) {
+  return s.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderMarkdown(text) {
+  const lines = text.split('\n');
+  return '<div class="result-card">' + lines.map(line => {
+    if (line.startsWith('## ')) return `<div class="result-h2">${line.slice(3)}</div>`;
+    if (line.startsWith('# '))  return `<div class="result-h2">${line.slice(2)}</div>`;
+    if (line.startsWith('### ')) return `<div class="result-h3">${line.slice(4)}</div>`;
+    if (line.startsWith('- ') || line.startsWith('• ')) return `<div class="result-bullet">• ${line.slice(2)}</div>`;
+    if (!line.trim()) return '<div style="height:8px"></div>';
+    return `<div class="result-line">${line}</div>`;
+  }).join('') + '</div>';
+}
+
+// Init
+renderSources();
+</script>
+</body>
+</html>
